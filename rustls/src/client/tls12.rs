@@ -2,20 +2,16 @@ use crate::check::{inappropriate_handshake_message, inappropriate_message};
 use crate::common_state::{CommonState, Side, State};
 use crate::conn::ConnectionRandoms;
 use crate::crypto::{CryptoProvider, KeyExchange, KeyExchangeError};
-use crate::dns_name::DnsName;
 use crate::enums::ProtocolVersion;
 use crate::enums::{AlertDescription, ContentType, HandshakeType};
 use crate::error::{Error, InvalidMessage, PeerMisbehaved};
-use crate::hash_hs::HandshakeHash;
+use crate::hash_hs::{HandshakeHash, HandshakeHashBuffer};
 #[cfg(feature = "logging")]
 use crate::log::{debug, trace, warn};
 use crate::msgs::base::{Payload, PayloadU8};
 use crate::msgs::ccs::ChangeCipherSpecPayload;
 use crate::msgs::codec::Codec;
-use crate::msgs::handshake::{
-    CertificatePayload, HandshakeMessagePayload, HandshakePayload, NewSessionTicketPayload,
-    ServerECDHParams, SessionId,
-};
+use crate::msgs::handshake::{CertificatePayload, HandshakeMessagePayload, HandshakePayload, NewSessionTicketPayload, Random, ServerECDHParams, SessionId};
 use crate::msgs::message::{Message, MessagePayload};
 use crate::msgs::persist;
 use crate::sign::Signer;
@@ -1065,6 +1061,8 @@ impl<C: CryptoProvider> State<ClientConnectionData> for ExpectFinished<C> {
             transcript: st.transcript,
             _cert_verified: st.cert_verified,
             _sig_verified: st.sig_verified,
+            session_id: st.session_id,
+            server_name: st.server_name,
             _fin_verified,
         }))
     }
@@ -1075,6 +1073,8 @@ struct ExpectTraffic<C: CryptoProvider> {
     config: Arc<ClientConfig<C>>,
     secrets: ConnectionSecrets,
     transcript: HandshakeHash,
+    session_id: SessionId,
+    server_name: ServerName,
     _cert_verified: verify::ServerCertVerified,
     _sig_verified: verify::HandshakeSignatureValid,
     _fin_verified: verify::FinishedMessageVerified,
@@ -1082,29 +1082,48 @@ struct ExpectTraffic<C: CryptoProvider> {
 
 impl<C: CryptoProvider> State<ClientConnectionData> for ExpectTraffic<C> {
     fn handle(self: Box<Self>, cx: &mut ClientContext<'_>, m: Message) -> hs::NextStateOrError {
-        match m.payload {
-            MessagePayload::ApplicationData(payload) => cx
-                .common
-                .take_received_plaintext(payload),
-            MessagePayload::Handshake {
-                parsed:
-                    HandshakeMessagePayload {
-                        typ: HandshakeType::HelloRequest,
-                        payload: HandshakePayload::ClientHello(_),
-                        ..
-                    },
-                ..
-            } => {
-                cx.common.stop_traffic();
+        if m.is_handshake_type(HandshakeType::HelloRequest) {
+            cx.common.stop_traffic();
+
+            let transcript_buffer = HandshakeHashBuffer::new();
+
+            let random = Random::new::<C>()?;
+
+            let chi = ClientHelloInput {
+                config: self.config.clone(),
+                resuming: None,
+                random,
+                #[cfg(feature = "tls12")]
+                using_ems: false,
+                sent_tls13_fake_ccs: false,
+                hello: ClientHelloDetails::new(),
+                session_id: self.session_id.clone(),
+                server_name: self.server_name.clone(),
+            };
+
+            Ok(emit_client_hello_for_retry::<C>(
+                transcript_buffer,
+                None,
+                None,
+                vec![],
+                cx.common.suite,
+                chi,
+                cx,
+            ))
+        } else {
+            match m.payload {
+                MessagePayload::ApplicationData(payload) => cx
+                    .common
+                    .take_received_plaintext(payload),
+                payload => {
+                    return Err(inappropriate_message(
+                        &payload,
+                        &[ContentType::ApplicationData],
+                    ));
+                }
             }
-            payload => {
-                return Err(inappropriate_message(
-                    &payload,
-                    &[ContentType::ApplicationData],
-                ));
-            }
+            Ok(self)
         }
-        Ok(self)
     }
 
     fn export_keying_material(

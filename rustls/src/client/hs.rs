@@ -179,16 +179,16 @@ struct ExpectServerHelloOrHelloRetryRequest<C: CryptoProvider> {
     extra_exts: Vec<ClientExtension>,
 }
 
-pub(crate) struct ClientHelloInput<C: CryptoProvider> {
-    config: Arc<ClientConfig<C>>,
-    resuming: Option<persist::Retrieved<ClientSessionValue>>,
-    random: Random,
+pub struct ClientHelloInput<C: CryptoProvider> {
+    pub config: Arc<ClientConfig<C>>,
+    pub resuming: Option<persist::Retrieved<ClientSessionValue>>,
+    pub random: Random,
     #[cfg(feature = "tls12")]
-    using_ems: bool,
-    sent_tls13_fake_ccs: bool,
-    hello: ClientHelloDetails,
-    session_id: SessionId,
-    server_name: ServerName,
+    pub using_ems: bool,
+    pub sent_tls13_fake_ccs: bool,
+    pub hello: ClientHelloDetails,
+    pub session_id: SessionId,
+    pub server_name: ServerName,
 }
 
 pub(crate) fn emit_client_hello_for_retry<C: CryptoProvider>(
@@ -882,7 +882,7 @@ impl<C: CryptoProvider> State<ClientConnectionData> for ExpectServerHelloOrHello
     }
 }
 
-enum ClientSessionValue {
+pub enum ClientSessionValue {
     Tls13(persist::Tls13ClientSessionValue),
     #[cfg(feature = "tls12")]
     Tls12(persist::Tls12ClientSessionValue),

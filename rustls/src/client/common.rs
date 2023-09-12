@@ -23,8 +23,8 @@ impl ServerCertDetails {
     }
 }
 
-pub(super) struct ClientHelloDetails {
-    pub(super) sent_extensions: Vec<ExtensionType>,
+pub struct ClientHelloDetails {
+    pub sent_extensions: Vec<ExtensionType>,
 }
 
 impl ClientHelloDetails {
