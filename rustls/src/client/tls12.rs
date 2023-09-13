@@ -1085,7 +1085,8 @@ impl<C: CryptoProvider> State<ClientConnectionData> for ExpectTraffic<C> {
         if m.is_handshake_type(HandshakeType::HelloRequest) {
             cx.common.stop_traffic();
 
-            let transcript_buffer = HandshakeHashBuffer::new();
+            let mut transcript_buffer = HandshakeHashBuffer::new();
+            transcript_buffer.set_client_auth_enabled();
 
             let random = Random::new::<C>()?;
 
