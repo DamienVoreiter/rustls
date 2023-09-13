@@ -1,3 +1,4 @@
+use log::trace;
 use crate::enums::{AlertDescription, ContentType, ProtocolVersion};
 use crate::error::{Error, InvalidMessage, PeerMisbehaved};
 use crate::key;
@@ -171,6 +172,8 @@ impl CommonState {
         //         return Ok(state);
         //     }
         // }
+
+        trace!("Process message : {:?}", msg);
 
         let mut cx = Context { common: self, data };
         match state.handle(&mut cx, msg) {
