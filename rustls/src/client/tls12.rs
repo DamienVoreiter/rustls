@@ -4,17 +4,14 @@ use crate::conn::ConnectionRandoms;
 use crate::enums::ProtocolVersion;
 use crate::enums::{AlertDescription, ContentType, HandshakeType};
 use crate::error::{Error, InvalidMessage, PeerMisbehaved};
-use crate::hash_hs::HandshakeHash;
+use crate::hash_hs::{HandshakeHash, HandshakeHashBuffer};
 use crate::kx;
 #[cfg(feature = "logging")]
 use crate::log::{debug, trace, warn};
 use crate::msgs::base::{Payload, PayloadU8};
 use crate::msgs::ccs::ChangeCipherSpecPayload;
 use crate::msgs::codec::Codec;
-use crate::msgs::handshake::{
-    CertificatePayload, HandshakeMessagePayload, HandshakePayload, NewSessionTicketPayload, Sct,
-    ServerECDHParams, SessionId,
-};
+use crate::msgs::handshake::{CertificatePayload, HandshakeMessagePayload, HandshakePayload, NewSessionTicketPayload, Random, Sct, ServerECDHParams, SessionId};
 use crate::msgs::message::{Message, MessagePayload};
 use crate::msgs::persist;
 use crate::sign::Signer;
@@ -27,7 +24,8 @@ use crate::verify::{self, DigitallySignedStruct};
 
 use super::client_conn::ClientConnectionData;
 use super::hs::ClientContext;
-use crate::client::common::ClientAuthDetails;
+use crate::client::common::{ClientAuthDetails, ClientHelloDetails};
+use crate::client::hs::{ClientHelloInput, emit_client_hello_for_retry};
 use crate::client::common::ServerCertDetails;
 use crate::client::{hs, ClientConfig, ServerName};
 
@@ -453,7 +451,7 @@ fn emit_certificate(
     };
 
     transcript.add_message(&cert);
-    common.send_msg(cert, false);
+    common.send_msg(cert, common.is_renego);
 }
 
 fn emit_clientkx(transcript: &mut HandshakeHash, common: &mut CommonState, pubkey: &PublicKey) {
@@ -471,7 +469,7 @@ fn emit_clientkx(transcript: &mut HandshakeHash, common: &mut CommonState, pubke
     };
 
     transcript.add_message(&ckx);
-    common.send_msg(ckx, false);
+    common.send_msg(ckx, common.is_renego);
 }
 
 fn emit_certverify(
@@ -496,7 +494,7 @@ fn emit_certverify(
     };
 
     transcript.add_message(&m);
-    common.send_msg(m, false);
+    common.send_msg(m, common.is_renego);
     Ok(())
 }
 
@@ -506,7 +504,7 @@ fn emit_ccs(common: &mut CommonState) {
         payload: MessagePayload::ChangeCipherSpec(ChangeCipherSpecPayload {}),
     };
 
-    common.send_msg(ccs, false);
+    common.send_msg(ccs, common.is_renego);
 }
 
 fn emit_finished(
@@ -516,6 +514,8 @@ fn emit_finished(
 ) {
     let vh = transcript.get_current_hash();
     let verify_data = secrets.client_verify_data(&vh);
+    // Store verify_data for case of renego to put it in the RenegotiationInfo extension
+    common.verify_data = Some(verify_data.clone());
     let verify_data_payload = Payload::new(verify_data);
 
     let f = Message {
@@ -830,8 +830,15 @@ impl State<ClientConnectionData> for ExpectServerDone {
             &secrets.randoms.client,
             &secrets.master_secret,
         );
-        cx.common
-            .start_encryption_tls12(&secrets, Side::Client);
+
+        if cx.common.is_renego {
+            cx.common
+                .start_encryption_only_tls12(&secrets, Side::Client);
+        } else {
+            cx.common
+                .start_encryption_tls12(&secrets, Side::Client);
+        }
+
         cx.common
             .record_layer
             .start_encrypting();
@@ -942,6 +949,11 @@ impl State<ClientConnectionData> for ExpectCcs {
         // CCS should not be received interleaved with fragmented handshake-level
         // message.
         cx.common.check_aligned_handshake()?;
+
+        if cx.common.is_renego {
+            cx.common
+                .start_decryption_only_tls12(&self.secrets, Side::Client);
+        }
 
         // nb. msgs layer validates trivial contents of CCS
         cx.common
@@ -1066,9 +1078,13 @@ impl State<ClientConnectionData> for ExpectFinished {
 
         cx.common.start_traffic();
         Ok(Box::new(ExpectTraffic {
+            config: st.config,
             secrets: st.secrets,
+            transcript: st.transcript,
             _cert_verified: st.cert_verified,
             _sig_verified: st.sig_verified,
+            session_id: st.session_id,
+            server_name: st.server_name,
             _fin_verified,
         }))
     }
@@ -1076,7 +1092,11 @@ impl State<ClientConnectionData> for ExpectFinished {
 
 // -- Traffic transit state --
 struct ExpectTraffic {
+    config: Arc<ClientConfig>,
     secrets: ConnectionSecrets,
+    transcript: HandshakeHash,
+    session_id: SessionId,
+    server_name: ServerName,
     _cert_verified: verify::ServerCertVerified,
     _sig_verified: verify::HandshakeSignatureValid,
     _fin_verified: verify::FinishedMessageVerified,
@@ -1084,18 +1104,50 @@ struct ExpectTraffic {
 
 impl State<ClientConnectionData> for ExpectTraffic {
     fn handle(self: Box<Self>, cx: &mut ClientContext<'_>, m: Message) -> hs::NextStateOrError {
-        match m.payload {
-            MessagePayload::ApplicationData(payload) => cx
-                .common
-                .take_received_plaintext(payload),
-            payload => {
-                return Err(inappropriate_message(
-                    &payload,
-                    &[ContentType::ApplicationData],
-                ));
+        if m.is_handshake_type(HandshakeType::HelloRequest) {
+            cx.common.stop_traffic();
+
+            let mut transcript_buffer = HandshakeHashBuffer::new();
+            transcript_buffer.set_client_auth_enabled();
+
+            let random = Random::new()?;
+
+            let chi = ClientHelloInput {
+                config: self.config.clone(),
+                resuming: None,
+                random,
+                #[cfg(feature = "tls12")]
+                using_ems: false,
+                sent_tls13_fake_ccs: false,
+                hello: ClientHelloDetails::new(),
+                session_id: self.session_id.clone(),
+                server_name: self.server_name.clone(),
+            };
+
+            Ok(emit_client_hello_for_retry(
+                transcript_buffer,
+                None,
+                None,
+                vec![],
+                false,
+                cx.common.suite,
+                chi,
+                cx,
+            ))
+        } else {
+            match m.payload {
+                MessagePayload::ApplicationData(payload) => cx
+                    .common
+                    .take_received_plaintext(payload),
+                payload => {
+                    return Err(inappropriate_message(
+                        &payload,
+                        &[ContentType::ApplicationData],
+                    ));
+                }
             }
+            Ok(self)
         }
-        Ok(self)
     }
 
     fn export_keying_material(

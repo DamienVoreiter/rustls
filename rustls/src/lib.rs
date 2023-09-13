@@ -267,7 +267,6 @@
     clippy::use_self,
     trivial_casts,
     trivial_numeric_casts,
-    missing_docs,
     unreachable_pub,
     unused_import_braces,
     unused_extern_crates,
@@ -332,7 +331,7 @@ mod hash_hs;
 mod limited_cache;
 mod rand;
 mod record_layer;
-mod stream;
+pub mod stream;
 #[cfg(feature = "tls12")]
 mod tls12;
 mod tls13;
@@ -409,10 +408,10 @@ pub use crate::versions::{SupportedProtocolVersion, ALL_VERSIONS, DEFAULT_VERSIO
 /// Items for use in a client.
 pub mod client {
     pub(super) mod builder;
-    mod client_conn;
+    pub mod client_conn;
     mod common;
     pub(super) mod handy;
-    mod hs;
+    pub mod hs;
     #[cfg(feature = "tls12")]
     mod tls12;
     mod tls13;
@@ -438,7 +437,7 @@ pub mod client {
     pub use crate::msgs::persist::Tls13ClientSessionValue;
 }
 
-pub use client::{ClientConfig, ClientConnection, ServerName};
+pub use client::{ClientConfig, ClientConnection, ServerName, hs::ClientHelloInput};
 
 /// Items for use in a server.
 pub mod server {
