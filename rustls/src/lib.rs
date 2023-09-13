@@ -323,7 +323,7 @@ mod hkdf;
 mod limited_cache;
 mod rand;
 mod record_layer;
-mod stream;
+pub mod stream;
 #[cfg(feature = "tls12")]
 mod tls12;
 mod tls13;
@@ -397,7 +397,7 @@ pub use crate::webpki::{RootCertStore, TrustAnchorWithDn};
 /// Items for use in a client.
 pub mod client {
     pub(super) mod builder;
-    mod client_conn;
+    pub mod client_conn;
     mod common;
     pub(super) mod handy;
     pub mod hs;
