@@ -14,6 +14,7 @@ use std::fmt::Debug;
 use std::io;
 use std::mem;
 use std::ops::{Deref, DerefMut};
+use log::info;
 
 /// A client or server connection.
 #[derive(Debug)]
@@ -377,6 +378,7 @@ impl<Data> ConnectionCommon<Data> {
 
         loop {
             let until_handshaked = self.is_handshaking();
+            trace!("until_handshaked : {}", until_handshaked);
 
             while self.wants_write() {
                 wrlen += self.write_tls(io)?;
@@ -386,6 +388,7 @@ impl<Data> ConnectionCommon<Data> {
                 return Ok((rdlen, wrlen));
             }
 
+            trace!("self.wants_read");
             while !eof && self.wants_read() {
                 let read_size = match self.read_tls(io) {
                     Ok(0) => {
@@ -404,6 +407,7 @@ impl<Data> ConnectionCommon<Data> {
                 }
             }
 
+            trace!("process_new_packets");
             match self.process_new_packets() {
                 Ok(_) => {}
                 Err(e) => {
@@ -422,6 +426,8 @@ impl<Data> ConnectionCommon<Data> {
             if until_handshaked && !self.is_handshaking() && self.wants_write() {
                 continue;
             }
+
+            trace!("eof {}, until_handshaked {}, self.is_handshaking() {}", eof, until_handshaked, self.is_handshaking());
 
             match (eof, until_handshaked, self.is_handshaking()) {
                 (_, true, false) => return Ok((rdlen, wrlen)),

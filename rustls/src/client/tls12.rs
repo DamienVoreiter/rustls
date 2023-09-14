@@ -1076,7 +1076,7 @@ impl State<ClientConnectionData> for ExpectFinished {
             emit_finished(&st.secrets, &mut st.transcript, cx.common);
         }
 
-        cx.common.start_traffic();
+        //cx.common.start_traffic();
         Ok(Box::new(ExpectTraffic {
             config: st.config,
             secrets: st.secrets,
