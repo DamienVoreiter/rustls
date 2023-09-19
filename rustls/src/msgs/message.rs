@@ -1,3 +1,4 @@
+use log::trace;
 use crate::enums::ProtocolVersion;
 use crate::enums::{AlertDescription, ContentType, HandshakeType};
 use crate::error::{Error, InvalidMessage};
@@ -41,6 +42,7 @@ impl MessagePayload {
         vers: ProtocolVersion,
         payload: Payload,
     ) -> Result<Self, InvalidMessage> {
+        println!("payload to parse : {:?}", payload);
         let mut r = Reader::init(&payload.0);
         match typ {
             ContentType::ApplicationData => Ok(Self::ApplicationData(payload)),
@@ -89,8 +91,10 @@ impl OpaqueMessage {
         if let ContentType::Unknown(_) = typ {
             return Err(MessageError::InvalidContentType);
         }
+        trace!("typ : {:?}", typ);
 
         let version = ProtocolVersion::read(r).map_err(|_| MessageError::TooShortForHeader)?;
+                trace!("version : {:?}", version);
         // Accept only versions 0x03XX for any XX.
         match version {
             ProtocolVersion::Unknown(ref v) if (v & 0xff00) != 0x0300 => {
@@ -100,6 +104,7 @@ impl OpaqueMessage {
         };
 
         let len = u16::read(r).map_err(|_| MessageError::TooShortForHeader)?;
+        trace!("len : {:?}", len);
 
         // Reject undersize messages
         //  implemented per section 5.1 of RFC8446 (TLSv1.3)
@@ -117,6 +122,7 @@ impl OpaqueMessage {
             .sub(len as usize)
             .map_err(|_| MessageError::TooShortForLength)?;
         let payload = Payload::read(&mut sub);
+        trace!("payload : {:?}", payload);
 
         Ok(Self {
             typ,

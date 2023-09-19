@@ -257,7 +257,7 @@ pub(crate) fn emit_client_hello_for_retry(
         // We could support PSK_KE here too. Such connections don't
         // have forward secrecy, and are similar to TLS1.2 resumption.
         let psk_modes = vec![PSKKeyExchangeMode::PSK_DHE_KE];
-        exts.push(ClientExtension::PresharedKeyModes(psk_modes));
+        //exts.push(ClientExtension::PresharedKeyModes(psk_modes));
     }
 
     if !config.alpn_protocols.is_empty() {
@@ -404,7 +404,7 @@ fn prepare_resumption<'a>(
                 || config.resumption.tls12_resumption == Tls12Resumption::SessionIdOrTickets
             {
                 // If we don't have a ticket, request one.
-                exts.push(ClientExtension::SessionTicket(ClientSessionTicket::Request));
+                //exts.push(ClientExtension::SessionTicket(ClientSessionTicket::Request));
             }
             return None;
         }

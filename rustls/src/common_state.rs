@@ -173,7 +173,7 @@ impl CommonState {
         //     }
         // }
 
-        trace!("Process message : {:?}", msg);
+        trace!("Process msg: {:?}", msg);
 
         let mut cx = Context { common: self, data };
         match state.handle(&mut cx, msg) {
@@ -408,6 +408,8 @@ impl CommonState {
                 return;
             }
         }
+
+        trace!("send_msg : {:?}, must_encrypt {}", m, must_encrypt);
         if !must_encrypt {
             let msg = &m.into();
             let iter = self
@@ -432,6 +434,7 @@ impl CommonState {
 
     #[cfg(feature = "tls12")]
     pub(crate) fn start_encryption_only_tls12(&mut self, secrets: &ConnectionSecrets, side: Side) {
+        trace!("----> start_encryption_only_tls12");
         let (_, enc) = secrets.make_cipher_pair(side);
         self.record_layer
             .prepare_message_encrypter(enc);
@@ -439,6 +442,7 @@ impl CommonState {
 
     #[cfg(feature = "tls12")]
     pub(crate) fn start_decryption_only_tls12(&mut self, secrets: &ConnectionSecrets, side: Side) {
+        trace!("----> start_decryption_only_tls12");
         let (dec, _) = secrets.make_cipher_pair(side);
         self.record_layer
             .prepare_message_decrypter(dec);
@@ -446,6 +450,7 @@ impl CommonState {
 
     #[cfg(feature = "tls12")]
     pub(crate) fn start_encryption_tls12(&mut self, secrets: &ConnectionSecrets, side: Side) {
+        trace!("----> start_encryption_tls12");
         let (dec, enc) = secrets.make_cipher_pair(side);
         self.record_layer
             .prepare_message_encrypter(enc);
