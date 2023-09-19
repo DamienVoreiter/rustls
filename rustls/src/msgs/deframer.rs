@@ -1,6 +1,5 @@
 use std::io;
 use std::ops::Range;
-use log::trace;
 
 use super::base::Payload;
 use super::codec::Codec;

@@ -267,6 +267,7 @@
     clippy::use_self,
     trivial_casts,
     trivial_numeric_casts,
+    missing_docs,
     unreachable_pub,
     unused_import_braces,
     unused_extern_crates,
@@ -331,7 +332,7 @@ mod hash_hs;
 mod limited_cache;
 mod rand;
 mod record_layer;
-pub mod stream;
+mod stream;
 #[cfg(feature = "tls12")]
 mod tls12;
 mod tls13;
@@ -408,10 +409,10 @@ pub use crate::versions::{SupportedProtocolVersion, ALL_VERSIONS, DEFAULT_VERSIO
 /// Items for use in a client.
 pub mod client {
     pub(super) mod builder;
-    pub mod client_conn;
+    mod client_conn;
     mod common;
     pub(super) mod handy;
-    pub mod hs;
+    mod hs;
     #[cfg(feature = "tls12")]
     mod tls12;
     mod tls13;
@@ -423,6 +424,7 @@ pub mod client {
         ResolvesClientCert, Resumption, ServerName, Tls12Resumption, WriteEarlyData,
     };
     pub use handy::ClientSessionMemoryCache;
+    pub use hs::ClientHelloInput;
 
     #[cfg(feature = "dangerous_configuration")]
     pub use crate::verify::{
@@ -437,7 +439,7 @@ pub mod client {
     pub use crate::msgs::persist::Tls13ClientSessionValue;
 }
 
-pub use client::{ClientConfig, ClientConnection, ServerName, hs::ClientHelloInput};
+pub use client::{ClientConfig, ClientConnection, ServerName};
 
 /// Items for use in a server.
 pub mod server {
