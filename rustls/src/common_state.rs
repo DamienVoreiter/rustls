@@ -2,7 +2,7 @@ use crate::enums::{AlertDescription, ContentType, ProtocolVersion};
 use crate::error::{Error, InvalidMessage, PeerMisbehaved};
 use crate::key;
 #[cfg(feature = "logging")]
-use crate::log::{debug, warn};
+use crate::log::{debug, warn, trace};
 use crate::msgs::alert::AlertMessagePayload;
 use crate::msgs::base::Payload;
 use crate::msgs::enums::{AlertLevel, KeyUpdateRequest};
@@ -19,7 +19,6 @@ use crate::suites::SupportedCipherSuite;
 #[cfg(feature = "tls12")]
 use crate::tls12::ConnectionSecrets;
 use crate::vecbuf::ChunkVecBuffer;
-use log::trace;
 
 /// Connection state common to both client and server connections.
 pub struct CommonState {
