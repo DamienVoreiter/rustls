@@ -424,7 +424,6 @@ pub mod client {
         ResolvesClientCert, Resumption, ServerName, Tls12Resumption, WriteEarlyData,
     };
     pub use handy::ClientSessionMemoryCache;
-    pub use hs::ClientHelloInput;
 
     #[cfg(feature = "dangerous_configuration")]
     pub use crate::verify::{

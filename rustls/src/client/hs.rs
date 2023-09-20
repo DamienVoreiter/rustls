@@ -31,9 +31,9 @@ use crate::client::client_conn::ClientConnectionData;
 use crate::client::common::ClientHelloDetails;
 use crate::client::{tls13, ClientConfig, ServerName};
 
+use crate::internal::msgs::base::PayloadU8;
 use std::ops::Deref;
 use std::sync::Arc;
-use crate::internal::msgs::base::PayloadU8;
 
 pub(super) type NextState = Box<dyn State<ClientConnectionData>>;
 pub(super) type NextStateOrError = Result<NextState, Error>;
@@ -178,16 +178,16 @@ struct ExpectServerHelloOrHelloRetryRequest {
     extra_exts: Vec<ClientExtension>,
 }
 
-pub struct ClientHelloInput {
-    pub config: Arc<ClientConfig>,
-    pub resuming: Option<persist::Retrieved<ClientSessionValue>>,
-    pub random: Random,
+pub(crate) struct ClientHelloInput {
+    pub(crate) config: Arc<ClientConfig>,
+    pub(crate) resuming: Option<persist::Retrieved<ClientSessionValue>>,
+    pub(crate) random: Random,
     #[cfg(feature = "tls12")]
-    pub using_ems: bool,
-    pub sent_tls13_fake_ccs: bool,
-    pub hello: ClientHelloDetails,
-    pub session_id: SessionId,
-    pub server_name: ServerName,
+    pub(crate) using_ems: bool,
+    pub(crate) sent_tls13_fake_ccs: bool,
+    pub(crate) hello: ClientHelloDetails,
+    pub(crate) session_id: SessionId,
+    pub(crate) server_name: ServerName,
 }
 
 pub(crate) fn emit_client_hello_for_retry(
@@ -256,8 +256,8 @@ pub(crate) fn emit_client_hello_for_retry(
     if support_tls13 {
         // We could support PSK_KE here too. Such connections don't
         // have forward secrecy, and are similar to TLS1.2 resumption.
-        let psk_modes = vec![PSKKeyExchangeMode::PSK_DHE_KE];
-        //exts.push(ClientExtension::PresharedKeyModes(psk_modes));
+        // let psk_modes = vec![PSKKeyExchangeMode::PSK_DHE_KE];
+        // exts.push(ClientExtension::PresharedKeyModes(psk_modes));
     }
 
     if !config.alpn_protocols.is_empty() {
@@ -341,7 +341,8 @@ pub(crate) fn emit_client_hello_for_retry(
     trace!("Sending ClientHello {:#?}", ch);
 
     transcript_buffer.add_message(&ch);
-    cx.common.send_msg(ch, cx.common.is_renego);
+    cx.common
+        .send_msg(ch, cx.common.is_renego);
 
     // Calculate the hash of ClientHello and use it to derive EarlyTrafficSecret
     let early_key_schedule = early_key_schedule.map(|(resuming_suite, schedule)| {

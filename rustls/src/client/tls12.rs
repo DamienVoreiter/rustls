@@ -11,7 +11,10 @@ use crate::log::{debug, trace, warn};
 use crate::msgs::base::{Payload, PayloadU8};
 use crate::msgs::ccs::ChangeCipherSpecPayload;
 use crate::msgs::codec::Codec;
-use crate::msgs::handshake::{CertificatePayload, HandshakeMessagePayload, HandshakePayload, NewSessionTicketPayload, Random, Sct, ServerECDHParams, SessionId};
+use crate::msgs::handshake::{
+    CertificatePayload, HandshakeMessagePayload, HandshakePayload, NewSessionTicketPayload, Random,
+    Sct, ServerECDHParams, SessionId
+};
 use crate::msgs::message::{Message, MessagePayload};
 use crate::msgs::persist;
 use crate::sign::Signer;
@@ -24,9 +27,9 @@ use crate::verify::{self, DigitallySignedStruct};
 
 use super::client_conn::ClientConnectionData;
 use super::hs::ClientContext;
+use crate::client::common::ServerCertDetails;
 use crate::client::common::{ClientAuthDetails, ClientHelloDetails};
 use crate::client::hs::{ClientHelloInput, emit_client_hello_for_retry};
-use crate::client::common::ServerCertDetails;
 use crate::client::{hs, ClientConfig, ServerName};
 
 use ring::agreement::PublicKey;
@@ -1080,7 +1083,6 @@ impl State<ClientConnectionData> for ExpectFinished {
         Ok(Box::new(ExpectTraffic {
             config: st.config,
             secrets: st.secrets,
-            transcript: st.transcript,
             _cert_verified: st.cert_verified,
             _sig_verified: st.sig_verified,
             session_id: st.session_id,
@@ -1094,7 +1096,6 @@ impl State<ClientConnectionData> for ExpectFinished {
 struct ExpectTraffic {
     config: Arc<ClientConfig>,
     secrets: ConnectionSecrets,
-    transcript: HandshakeHash,
     session_id: SessionId,
     server_name: ServerName,
     _cert_verified: verify::ServerCertVerified,
@@ -1113,14 +1114,14 @@ impl State<ClientConnectionData> for ExpectTraffic {
             let random = Random::new()?;
 
             let chi = ClientHelloInput {
-                config: self.config.clone(),
+                config: Arc::<ClientConfig>::clone(&self.config),
                 resuming: None,
                 random,
                 #[cfg(feature = "tls12")]
                 using_ems: false,
                 sent_tls13_fake_ccs: false,
                 hello: ClientHelloDetails::new(),
-                session_id: self.session_id.clone(),
+                session_id: self.session_id,
                 server_name: self.server_name.clone(),
             };
 

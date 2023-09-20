@@ -1,4 +1,3 @@
-use log::trace;
 use crate::enums::{AlertDescription, ContentType, ProtocolVersion};
 use crate::error::{Error, InvalidMessage, PeerMisbehaved};
 use crate::key;
@@ -20,6 +19,7 @@ use crate::suites::SupportedCipherSuite;
 #[cfg(feature = "tls12")]
 use crate::tls12::ConnectionSecrets;
 use crate::vecbuf::ChunkVecBuffer;
+use log::trace;
 
 /// Connection state common to both client and server connections.
 pub struct CommonState {
@@ -463,6 +463,7 @@ impl CommonState {
         self.send_fatal_alert(AlertDescription::MissingExtension, why)
     }
 
+    #[allow(dead_code)]
     fn send_warning_alert(&mut self, desc: AlertDescription) {
         warn!("Sending warning alert {:?}", desc);
         self.send_warning_alert_no_log(desc);

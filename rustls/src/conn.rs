@@ -14,7 +14,6 @@ use std::fmt::Debug;
 use std::io;
 use std::mem;
 use std::ops::{Deref, DerefMut};
-use log::info;
 
 /// A client or server connection.
 #[derive(Debug)]
@@ -377,7 +376,7 @@ impl<Data> ConnectionCommon<Data> {
         let mut rdlen = 0;
 
         loop {
-            let until_handshaked =  self.is_handshaking();
+            let until_handshaked = self.is_handshaking();
             trace!("until_handshaked : {}", until_handshaked);
 
             while self.wants_write() {
@@ -427,13 +426,12 @@ impl<Data> ConnectionCommon<Data> {
 
             match (eof, until_handshaked, self.is_handshaking()) {
                 (_, true, false) => return Ok((rdlen, wrlen)),
-                (false, false, true) => {},
+                (false, false, true) => {}
                 (_, false, _) => return Ok((rdlen, wrlen)),
                 (true, true, true) => return Err(io::Error::from(io::ErrorKind::UnexpectedEof)),
                 (..) => {}
             }
         }
-        trace!("Handshake ended");
     }
 
     /// Extract the first handshake message.
