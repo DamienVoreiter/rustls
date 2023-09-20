@@ -13,7 +13,7 @@ use crate::msgs::ccs::ChangeCipherSpecPayload;
 use crate::msgs::codec::Codec;
 use crate::msgs::handshake::{
     CertificatePayload, HandshakeMessagePayload, HandshakePayload, NewSessionTicketPayload, Random,
-    Sct, ServerECDHParams, SessionId
+    Sct, ServerECDHParams, SessionId,
 };
 use crate::msgs::message::{Message, MessagePayload};
 use crate::msgs::persist;
@@ -29,7 +29,7 @@ use super::client_conn::ClientConnectionData;
 use super::hs::ClientContext;
 use crate::client::common::ServerCertDetails;
 use crate::client::common::{ClientAuthDetails, ClientHelloDetails};
-use crate::client::hs::{ClientHelloInput, emit_client_hello_for_retry};
+use crate::client::hs::{emit_client_hello_for_retry, ClientHelloInput};
 use crate::client::{hs, ClientConfig, ServerName};
 
 use ring::agreement::PublicKey;

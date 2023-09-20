@@ -37,8 +37,8 @@ impl ServerCertDetails {
     }
 }
 
-pub struct ClientHelloDetails {
-    pub sent_extensions: Vec<ExtensionType>,
+pub(crate) struct ClientHelloDetails {
+    pub(crate) sent_extensions: Vec<ExtensionType>,
 }
 
 impl ClientHelloDetails {

@@ -10,8 +10,7 @@ use crate::kx;
 #[cfg(feature = "logging")]
 use crate::log::{debug, trace};
 use crate::msgs::base::Payload;
-use crate::msgs::enums::{Compression, ExtensionType};
-use crate::msgs::enums::{ECPointFormat, PSKKeyExchangeMode};
+use crate::msgs::enums::{Compression, ECPointFormat, ExtensionType};
 use crate::msgs::handshake::ConvertProtocolNameList;
 use crate::msgs::handshake::{CertificateStatusRequest, ClientSessionTicket, Sct};
 use crate::msgs::handshake::{ClientExtension, HasServerExtensions};
@@ -897,7 +896,7 @@ impl State<ClientConnectionData> for ExpectServerHelloOrHelloRetryRequest {
     }
 }
 
-pub enum ClientSessionValue {
+pub(crate) enum ClientSessionValue {
     Tls13(persist::Tls13ClientSessionValue),
     #[cfg(feature = "tls12")]
     Tls12(persist::Tls12ClientSessionValue),
