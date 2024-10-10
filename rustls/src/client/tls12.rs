@@ -259,9 +259,9 @@ fn emit_finished(secrets: &SessionSecrets,
                  sess: &mut ClientSessionImpl) {
     let vh = handshake.transcript.get_current_hash();
     let verify_data = secrets.client_verify_data(&vh);
-    let verify_data_payload = Payload::new(verify_data);
     // Store verify_data for case of renego to put it in the RenegotiationInfo extension
     sess.verify_data = Some(verify_data.clone());
+    let verify_data_payload = Payload::new(verify_data);
 
     let f = Message {
         typ: ContentType::Handshake,
